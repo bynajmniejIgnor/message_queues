@@ -77,11 +77,8 @@ int main(){
 				printf("Message sent!\n");
 				break;
 			case 3:
-				if(fork()==0){
-					if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
-					printf("%s\n",response.mtext);
-					exit(0);
-				}
+				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
+				printf("%s\n",response.mtext);
 				break;
 			case 4:
 				set_message(&request,9997,username,"server","");
