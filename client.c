@@ -48,20 +48,20 @@ int main(){
 	printf("Password: ");
 	fgets(input,MAX_MESSAGE_LENGTH,stdin);
 	strcpy(request.mtext,input);
-	request.mtype=9999;
+	request.mtype=1;
 
 	if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 	if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,0,MSG_NOERROR)==-1) perror("msgrcv");
 	printf("%s",response.mtext);
-	if(response.mtext=="Incorrect credentials!\n") return 0;
+	if(response.mtype==403) return 0;
 	int id=response.mtype;
 	while(1){
 		printf("My id is %i\n",id);
-		printf("1) List logged in users\n2) Send message\n3) Check for messages\n4) Logout\n: ");
+		printf("1) List logged in users\n2) Send message to user\n3) Check for messages\n4) Logout\n: ");
 		fgets(input,MAX_MESSAGE_LENGTH,stdin);
 		switch(atoi(input)){
 			case 1:
-				set_message(&request,9998,username,"server","");
+				set_message(&request,2,username,"server","");
 				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
 				printf("Logged in users are:\n%s",response.mtext);
@@ -72,18 +72,19 @@ int main(){
 				fgets(rec,MAX_USERNAME_LENGTH,stdin);
 				printf("Message content:\n");
 				fgets(input,MAX_MESSAGE_LENGTH,stdin);
-				set_message(&request,9996,username,rec,input);
-				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				set_message(&request,4,username,rec,input);
+				msgsnd(server,&request,MAX_MESSAGE_LENGTH,0);
 				printf("Message sent!\n");
 				break;
 			case 3:
-				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
-				printf("%s\n",response.mtext);
+				while(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,IPC_NOWAIT)){
+					printf("Got message from %s\n%s\n",response.sender,response.mtext);
+				}
 				break;
 			case 4:
-				set_message(&request,9997,username,"server","");
+				set_message(&request,3,username,"server","");
 				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
-				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,0,MSG_NOERROR)==-1) perror("msgrcv");
+				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
 				printf("%s",response.mtext);
 				return 0;
 		}

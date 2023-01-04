@@ -44,6 +44,7 @@ void print_table(){
 		if(hash_table[i]==NULL) printf("\t%i\t---\n",i);
 		else printf("\t%i\t%s\n",i,hash_table[i]);
 	}
+	printf("\n");
 }
 
 int add_user(user *u){
@@ -110,17 +111,51 @@ char *strip_name(char username[MAX_USERNAME_LENGTH]){
 	return username;
 }
 
+char *dump_groups(int *groups[], char output[MAX_MESSAGE_LENGTH]){
+	char start[]="List of user groups:\n";
+	strncat(output,start,MAX_MESSAGE_LENGTH);
+	char space[1]=" ";
+	char newline[1]="\n";
+	char colon[1]=":";
+	char a[1]=" ";
+	for(int i=0; i<3; i++){
+		a[0]=i+'0';
+		char group_name[7]="group";
+		strncat(group_name,a,1);
+		strncat(output,group_name,MAX_MESSAGE_LENGTH);
+		strncat(output,colon,1);
+		strncat(output,space,1);
+		for(int j=0; j<MAX_USERS; j++){
+			if(groups[i][j]==-1) break;
+			strncat(output,hash_table[groups[i][j]]->username,MAX_USERNAME_LENGTH);
+			strncat(output,space,1);
+		}
+		strncat(output,newline,1);
+	}
+	strncat(output,newline,1);
+	return output;
+}
+
 int main(){
 	init_hash_table();
 	user test1={.username="test1", .password="1"};
 	user test2={.username="test2", .password="2"};
 	user test3={.username="test3", .password="3"};
 	user test4={.username="test4", .password="4"};
+	user filip={.username="filip", .password="krol"};
 
 	add_user(&test1);
 	add_user(&test2);
 	add_user(&test3);
 	add_user(&test4);
+	add_user(&filip);
+
+	int group1[4]={hash("test1"),hash("test2"),hash("test3"),-1};
+	int group2[3]={hash("test1"),hash("test4"),-1};
+	int group3[5]={hash("test2"),hash("test3"),hash("test4"),hash("filip"),-1};
+
+	int *groups[3]={group1,group2,group3};
+	
 	print_table();
 
 	msgbuff request;
@@ -133,26 +168,26 @@ int main(){
 	}
 
 	while(1){
-		if (msgrcv(server,&request,256,0,MSG_NOERROR)==-1){
+		if (msgrcv(server,&request,256,-MAX_USERS+1,MSG_NOERROR)==-1){
 			perror("msgrcv");
 			exit(1);
 		}	
 		switch(request.mtype){
-			case 9999:
+			case 1:
 				char *name=strip_name(request.sender);
 				char *passwd=strip_name(request.mtext);
 				printf("Login request from %s...\t",name);
 				user *tmp=login(name,passwd); 
 				if(tmp){
 					printf("OK!\n");
-					set_message(&response,hash(name),"server",name,"Welcome back!\n");
+					set_message(&response,hash(name)+MAX_USERS,"server",name,"Welcome back!\n");
 				}
 				else{
-					set_message(&response,hash(name),"server",name,"Incorrect credentials!\n");
+					set_message(&response,403,"server",name,"Incorrect credentials!\n");
 				}
 				if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				break;
-			case 9998:
+			case 2:
 				name=strip_name(request.sender);
 				printf("Request from %s for userlist\n",name);
 				char output[MAX_MESSAGE_LENGTH]="";
@@ -166,22 +201,30 @@ int main(){
 					}
 				}
 				strncat(output,newline,1);
-				set_message(&response,hash(name),"server",name,output);
+				set_message(&response,hash(name)+MAX_USERS,"server",name,output);
 				if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				break;
-			case 9997:
+			case 3:
 				name=strip_name(request.sender);
 				printf("Logout request from %s\n",name);
-				if(logout(name)) set_message(&response,hash(name),"server",name,"Goodbye!\n");
+				if(logout(name)) set_message(&response,hash(name)+MAX_USERS,"server",name,"Goodbye!\n");
 				else printf("Something went wrong...\n");
 				if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				break;
-			case 9996:
+			case 4:
 				char *from=strip_name(request.sender);
 				char *to=strip_name(request.receiver);
 				printf("User %s wants to send a message to %s\t farwarding...\n",from,to);
-				set_message(&response,hash(to),from,to,request.mtext);
-				if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				set_message(&response,hash(to)+MAX_USERS,from,to,request.mtext);
+				msgsnd(server,&response,MAX_MESSAGE_LENGTH,0);
+				break;
+			case 5:
+				name=strip_name(request.sender);
+				memset(output,0,strlen(output));
+				printf("Request from %s for group list\n",name);
+				char *groups_string=dump_groups(groups,groups_string);
+				printf("%s\n",groups_string);
+				set_message(&response,hash(name)+MAX_USERS,"server",name,groups_string);
 				break;
 		}
 	}
