@@ -222,9 +222,22 @@ int main(){
 				name=strip_name(request.sender);
 				memset(output,0,strlen(output));
 				printf("Request from %s for group list\n",name);
-				char *groups_string=dump_groups(groups,groups_string);
-				printf("%s\n",groups_string);
-				set_message(&response,hash(name)+MAX_USERS,"server",name,groups_string);
+				set_message(&response,hash(name)+MAX_USERS,"server",name,dump_groups(groups,output));
+				if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				break;
+			case 6:
+				name=strip_name(request.sender);
+				to=strip_name(request.receiver);
+
+				printf("Group message request from %s\n",name);
+				int gr=atoi(request.receiver);
+				for(int i=0; i<MAX_USERS; i++){
+					if(groups[gr][i]==-1) break;
+					if(groups[gr][i]==hash(name)) continue;
+					printf("Sending msg to user %s\n",hash_table[groups[gr][i]]->username);
+					set_message(&response,groups[gr][i]+MAX_USERS,name,to,request.mtext);
+					if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				}
 				break;
 		}
 	}

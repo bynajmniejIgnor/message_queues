@@ -56,8 +56,7 @@ int main(){
 	if(response.mtype==403) return 0;
 	int id=response.mtype;
 	while(1){
-		printf("My id is %i\n",id);
-		printf("1) List logged in users\n2) Send message to user\n3) Check for messages\n4) Logout\n: ");
+		printf("1) List logged in users\n2) List user groups\n3) Send message to user\n4) Send message to user group\n5) Check for messages\n6) Logout\n: ");
 		fgets(input,MAX_MESSAGE_LENGTH,stdin);
 		switch(atoi(input)){
 			case 1:
@@ -67,6 +66,12 @@ int main(){
 				printf("Logged in users are:\n%s",response.mtext);
 				break;
 			case 2:
+				set_message(&request,5,username,"server","");
+				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
+				printf("%s",response.mtext);
+				break;
+			case 3:
 				char rec[MAX_USERNAME_LENGTH]="";
 				printf("Send message to: ");
 				fgets(rec,MAX_USERNAME_LENGTH,stdin);
@@ -76,12 +81,19 @@ int main(){
 				msgsnd(server,&request,MAX_MESSAGE_LENGTH,0);
 				printf("Message sent!\n");
 				break;
-			case 3:
-				while(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,IPC_NOWAIT)){
-					printf("Got message from %s\n%s\n",response.sender,response.mtext);
-				}
-				break;
 			case 4:
+				memset(rec,0,strlen(rec));
+				printf("Send message to users form group: ");
+				fgets(rec,MAX_USERNAME_LENGTH,stdin);
+				printf("Message content:\n");
+				fgets(input,MAX_MESSAGE_LENGTH,stdin);
+				set_message(&request,6,username,rec,input);
+				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				break;
+			case 5:
+				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,IPC_NOWAIT) && response.sender!="server") printf("Got message from %s\n%s\n",response.sender,response.mtext);
+				break;
+			case 6:
 				set_message(&request,3,username,"server","");
 				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
