@@ -7,9 +7,11 @@
 #define MAX_MESSAGE_LENGTH 256
 #define MAX_USERS 10
 #define MAX_USERNAME_LENGTH 20
+#define MAX_GROUP_MEMBERS 5
 
 typedef struct{
 	long mtype;
+	int code;
 	char sender[MAX_USERNAME_LENGTH];
 	char receiver[MAX_USERNAME_LENGTH];
 	char mtext[MAX_MESSAGE_LENGTH];
@@ -20,6 +22,11 @@ typedef struct{
 	char password[MAX_USERNAME_LENGTH];
 	int loggedin;
 }user;
+
+typedef struct{
+	int members[MAX_GROUP_MEMBERS];
+	int count;
+}group;
 
 user *hash_table[MAX_USERS];
 
@@ -111,7 +118,7 @@ char *strip_name(char username[MAX_USERNAME_LENGTH]){
 	return username;
 }
 
-char *dump_groups(int *groups[], char output[MAX_MESSAGE_LENGTH]){
+char *dump_groups(group groups[3], char output[MAX_MESSAGE_LENGTH]){
 	char start[]="List of user groups:\n";
 	strncat(output,start,MAX_MESSAGE_LENGTH);
 	char space[1]=" ";
@@ -125,15 +132,54 @@ char *dump_groups(int *groups[], char output[MAX_MESSAGE_LENGTH]){
 		strncat(output,group_name,MAX_MESSAGE_LENGTH);
 		strncat(output,colon,1);
 		strncat(output,space,1);
-		for(int j=0; j<MAX_USERS; j++){
-			if(groups[i][j]==-1) break;
-			strncat(output,hash_table[groups[i][j]]->username,MAX_USERNAME_LENGTH);
+		for(int j=0; j<MAX_GROUP_MEMBERS; j++){
+			if(groups[i].members[j]==-1) continue;
+			strncat(output,hash_table[groups[i].members[j]]->username,MAX_USERNAME_LENGTH);
 			strncat(output,space,1);
 		}
 		strncat(output,newline,1);
 	}
 	strncat(output,newline,1);
 	return output;
+}
+
+void init_group(group *target){
+	for(int i=0; i<MAX_GROUP_MEMBERS; i++){
+		target->members[i]=-1;
+	}
+	target->count=0;
+}
+
+int add_to_group(group *target, int user){
+	if(target->count>=MAX_GROUP_MEMBERS-1){
+		printf("Group is full!\n");
+		return 0;
+	}
+	for(int i=0; i<MAX_GROUP_MEMBERS; i++){
+		if(target->members[i]==user){
+			printf("User already in group!\n");
+			return 0;
+		}
+		if(target->members[i]==-1){
+			target->members[i]=user;
+			target->count+=1;
+			return 1;
+			break;
+		}
+	}
+	return 0;
+}
+
+int remove_from_group(group *target, int user){
+	for(int i=0; i<MAX_GROUP_MEMBERS; i++){
+		if(target->members[i]==user){
+			target->members[i]=-1;
+			target->count-=1;
+			return 1;
+		}
+	}
+	printf("User not found\n");
+	return 0;
 }
 
 int main(){
@@ -150,11 +196,25 @@ int main(){
 	add_user(&test4);
 	add_user(&filip);
 
-	int group1[4]={hash("test1"),hash("test2"),hash("test3"),-1};
-	int group2[3]={hash("test1"),hash("test4"),-1};
-	int group3[5]={hash("test2"),hash("test3"),hash("test4"),hash("filip"),-1};
+	group group1;
+	group group2;
+	group group3;
+	
+	init_group(&group1);
+	init_group(&group2);
+	init_group(&group3);
 
-	int *groups[3]={group1,group2,group3};
+	/*
+	add_to_group(&group1,0);
+	add_to_group(&group1,4);
+	add_to_group(&group2,5);
+	add_to_group(&group2,6);
+	add_to_group(&group2,7);
+	add_to_group(&group3,0);
+	add_to_group(&group3,5);
+	add_to_group(&group3,7);
+	*/
+	group groups[3]={group1,group2,group3};
 	
 	print_table();
 
@@ -232,13 +292,43 @@ int main(){
 				printf("Group message request from %s\n",name);
 				int gr=atoi(request.receiver);
 				for(int i=0; i<MAX_USERS; i++){
-					if(groups[gr][i]==-1) break;
-					if(groups[gr][i]==hash(name)) continue;
-					printf("Sending msg to user %s\n",hash_table[groups[gr][i]]->username);
-					set_message(&response,groups[gr][i]+MAX_USERS,name,to,request.mtext);
+					if(groups[gr].members[i]==-1 || groups[gr].members[i]==hash(name)) continue;
+					//printf("Sending msg to user %s\n",hash_table[groups[gr].members[i]]->username);
+					set_message(&response,groups[gr].members[i]+MAX_USERS,name,to,request.mtext);
 					if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				}
 				break;
+			case 7:
+				name=strip_name(request.sender);
+				to=strip_name(request.mtext);
+				printf("User %s wants to join group%s...\n",name,to);
+				if(add_to_group(&groups[atoi(to)],hash(name))){
+					printf("OK\n");
+					set_message(&response,hash(name)+MAX_USERS,"server",name,"Success!\n");
+					if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				}
+				else{
+					printf("Failed\n");
+					set_message(&response,hash(name)+MAX_USERS,"server",name,"");
+					response.code=403;
+					if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				}
+				break;
+			case 8:
+				name=strip_name(request.sender);
+				to=strip_name(request.mtext);
+				printf("User %s wants to leave group%s...\n",name,to);
+				if(remove_from_group(&groups[atoi(to)],hash(name))){
+					printf("OK\n");
+					set_message(&response,hash(name)+MAX_USERS,"server",name,"Success!\n");
+					if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				}
+				else{
+					printf("Failed\n");
+					set_message(&response,hash(name)+MAX_USERS,"server",name,"");
+					response.code=403;
+					if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
+				}
 		}
 	}
 
