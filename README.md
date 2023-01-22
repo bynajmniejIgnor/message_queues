@@ -7,25 +7,17 @@ Należy najpierw jednokrotnie uruchomić plik `server.out`, a dopiero potem wybr
 Aby użytkownik mógł się zalogować, w polu `Server id` musi podać ciąg `1234` zatwierdzony enterem.
 
 Utworzonych jest 9 użytkowników:
-login	hasło
 
-test1	1
-
-test2	2
-
-test3	3
-
-test4	4
-
-test5	5
-
-test6	6
-
-test7	7
-
-test8	8
-
-test9	9
+|login|hasło|
+|test1|1|
+|test2|2|
+|test3|3|
+|test4|4|
+|test5|5|
+|test6|6|
+|test7|7|
+|test8|8|
+|test9|9|
 
 Korzystanie z programu polega na wyborze cyfry intsrukcji.
 
