@@ -7,16 +7,6 @@
 #include<unistd.h>
 #define MAX_MESSAGE_LENGTH 256
 #define MAX_USERNAME_LENGTH 20
-#define MAX_USERS 10
-
-/*
-1 - login request
-2 - server OK response
-3 - get userlist request
-4 - server ERROR response
-5 - logout request
-MAX_USERS+ - user id 
-*/
 
 struct msgbuff{
 	long mtype;
@@ -80,7 +70,8 @@ int main(){
 				fgets(input,MAX_MESSAGE_LENGTH,stdin);
 				set_message(&request,4,username,rec,input);
 				msgsnd(server,&request,MAX_MESSAGE_LENGTH,0);
-				printf("Message sent!\n");
+				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
+				printf("%s",response.mtext);
 				break;
 			case 4:
 				memset(rec,0,strlen(rec));
@@ -92,7 +83,8 @@ int main(){
 				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				break;
 			case 5:
-				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,IPC_NOWAIT) && response.sender!="server") printf("Got message from %s\n%s\n",response.sender,response.mtext);
+				msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,IPC_NOWAIT); 
+				printf("Got message from %s\n%s\n",response.sender,response.mtext);
 				break;
 			case 8:
 				set_message(&request,3,username,"server","");
@@ -101,22 +93,22 @@ int main(){
 				printf("%s",response.mtext);
 				return 0;
 			case 6:
-				printf("Join to group nr:");
+				printf("Join to group nr: ");
 				memset(input,0,strlen(input));
-				fgets(input,MAX_USERS,stdin);
+				fgets(input,MAX_USERNAME_LENGTH,stdin);
 				set_message(&request,7,username,"server",input);
 				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");
 				if(response.code==403){
-					printf("Can't join group :\"(\n");
+					printf("Can't join this group :\"(\n");
 					break;
 				}
 				printf("%s",response.mtext);
 				break;
 			case 7:
-				printf("Leave group nr:");
+				printf("Leave group nr: ");
 				memset(input,0,strlen(input));
-				fgets(input,MAX_USERS,stdin);
+				fgets(input,MAX_USERNAME_LENGTH,stdin);
 				set_message(&request,8,username,"server",input);
 				if(msgsnd(server,&request,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				if(msgrcv(server,&response,MAX_MESSAGE_LENGTH,id,MSG_NOERROR)==-1) perror("msgrcv");

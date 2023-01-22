@@ -5,7 +5,7 @@
 #include<stdlib.h>
 #include<string.h>
 #define MAX_MESSAGE_LENGTH 256
-#define MAX_USERS 10
+#define MAX_USERS 31
 #define MAX_USERNAME_LENGTH 20
 #define MAX_GROUP_MEMBERS 5
 
@@ -20,6 +20,7 @@ typedef struct{
 typedef struct{
 	char username[MAX_USERNAME_LENGTH];
 	char password[MAX_USERNAME_LENGTH];
+	int log_attempt;
 	int loggedin;
 }user;
 
@@ -35,7 +36,8 @@ int hash(char *name){
 	unsigned int hash_value=0;
 	for(int i=0; i<length; i++){
 		hash_value+=name[i];
-		hash_value=(hash_value*name[i])%MAX_USERS;
+		hash_value=hash_value*name[i];
+		hash_value=hash_value%MAX_USERS;
 	}
 	return hash_value;
 }
@@ -49,7 +51,7 @@ void init_hash_table(){
 void print_table(){
 	for(int i=0; i<MAX_USERS; i++){
 		if(hash_table[i]==NULL) printf("\t%i\t---\n",i);
-		else printf("\t%i\t%s\n",i,hash_table[i]);
+		else printf("\t%i\t%s\n",i,hash_table[i]->username);
 	}
 	printf("\n");
 }
@@ -62,6 +64,7 @@ int add_user(user *u){
 	}
 	hash_table[index]=u;
 	hash_table[index]->loggedin=0;
+	hash_table[index]->log_attempt=0;
 	return 1;
 }
 
@@ -70,14 +73,21 @@ user *login(char *name, char *passwd){
 	int index=hash(name);
 	if(hash_table[index]!=NULL){
 		if(strncmp(hash_table[index]->password,passwd,MAX_USERS)==0){
+			if(hash_table[index]->log_attempt>2){
+				printf("Detected suspicious activity, blocking account...\n");
+				return NULL;
+			}
 			hash_table[index]->loggedin=1;
+			hash_table[index]->log_attempt=0;
 			return hash_table[index];	
 		}
 		else{
-			printf("passwords do not match!\n");
+			printf("Incorrect credentials!\n");
+			hash_table[index]->log_attempt+=1;
 			return NULL;
 		}
 	}
+	return NULL;
 }
 
 user *logout(char *name){
@@ -120,7 +130,7 @@ char *strip_name(char username[MAX_USERNAME_LENGTH]){
 
 char *dump_groups(group groups[3], char output[MAX_MESSAGE_LENGTH]){
 	char start[]="List of user groups:\n";
-	strncat(output,start,MAX_MESSAGE_LENGTH);
+	strncat(output,start,MAX_MESSAGE_LENGTH-1);
 	char space[1]=" ";
 	char newline[1]="\n";
 	char colon[1]=":";
@@ -129,7 +139,7 @@ char *dump_groups(group groups[3], char output[MAX_MESSAGE_LENGTH]){
 		a[0]=i+'0';
 		char group_name[7]="group";
 		strncat(group_name,a,1);
-		strncat(output,group_name,MAX_MESSAGE_LENGTH);
+		strncat(output,group_name,MAX_MESSAGE_LENGTH-1);
 		strncat(output,colon,1);
 		strncat(output,space,1);
 		for(int j=0; j<MAX_GROUP_MEMBERS; j++){
@@ -182,19 +192,28 @@ int remove_from_group(group *target, int user){
 	return 0;
 }
 
-int main(){
+int main(int argc, char *argv[]){
+
 	init_hash_table();
 	user test1={.username="test1", .password="1"};
 	user test2={.username="test2", .password="2"};
 	user test3={.username="test3", .password="3"};
 	user test4={.username="test4", .password="4"};
-	user filip={.username="filip", .password="krol"};
+	user test5={.username="test5", .password="5"};
+	user test6={.username="test6", .password="6"};
+	user test7={.username="test7", .password="7"};
+	user test8={.username="test8", .password="8"};
+	user test9={.username="test9", .password="9"};
 
 	add_user(&test1);
 	add_user(&test2);
 	add_user(&test3);
 	add_user(&test4);
-	add_user(&filip);
+	add_user(&test5);
+	add_user(&test6);
+	add_user(&test7);
+	add_user(&test8);
+	add_user(&test9);
 
 	group group1;
 	group group2;
@@ -204,16 +223,6 @@ int main(){
 	init_group(&group2);
 	init_group(&group3);
 
-	/*
-	add_to_group(&group1,0);
-	add_to_group(&group1,4);
-	add_to_group(&group2,5);
-	add_to_group(&group2,6);
-	add_to_group(&group2,7);
-	add_to_group(&group3,0);
-	add_to_group(&group3,5);
-	add_to_group(&group3,7);
-	*/
 	group groups[3]={group1,group2,group3};
 	
 	print_table();
@@ -241,6 +250,9 @@ int main(){
 				if(tmp){
 					printf("OK!\n");
 					set_message(&response,hash(name)+MAX_USERS,"server",name,"Welcome back!\n");
+				}
+				else if(hash_table[hash(name)]->log_attempt>2){
+					set_message(&response,403,"server",name,"This account has beed locked out because of suspicious activity!\n");
 				}
 				else{
 					set_message(&response,403,"server",name,"Incorrect credentials!\n");
@@ -277,6 +289,10 @@ int main(){
 				printf("User %s wants to send a message to %s\t farwarding...\n",from,to);
 				set_message(&response,hash(to)+MAX_USERS,from,to,request.mtext);
 				msgsnd(server,&response,MAX_MESSAGE_LENGTH,0);
+				
+				set_message(&response,hash(from)+MAX_USERS,"server",from,"Message sent!\n");
+				msgsnd(server,&response,MAX_MESSAGE_LENGTH,0);
+
 				break;
 			case 5:
 				name=strip_name(request.sender);
@@ -291,9 +307,9 @@ int main(){
 
 				printf("Group message request from %s\n",name);
 				int gr=atoi(request.receiver);
-				for(int i=0; i<MAX_USERS; i++){
+				for(int i=0; i<MAX_GROUP_MEMBERS; i++){
 					if(groups[gr].members[i]==-1 || groups[gr].members[i]==hash(name)) continue;
-					//printf("Sending msg to user %s\n",hash_table[groups[gr].members[i]]->username);
+					printf("Sending msg to user %s\n",hash_table[groups[gr].members[i]]->username);
 					set_message(&response,groups[gr].members[i]+MAX_USERS,name,to,request.mtext);
 					if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				}
@@ -329,6 +345,7 @@ int main(){
 					response.code=403;
 					if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				}
+				break;
 		}
 	}
 
