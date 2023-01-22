@@ -9,7 +9,7 @@ Aby użytkownik mógł się zalogować, w polu `Server id` musi podać ciąg `12
 Utworzonych jest 9 użytkowników:
 
 |login|hasło|
-|---|---|
+|---|-|
 |test1|1|
 |test2|2|
 |test3|3|
