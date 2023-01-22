@@ -32,9 +32,11 @@ Dołączanie i opuszczanie grup przebiega w sposób analogiczny.
 ### Opis plików
 
 * inf151918_s.c:
+
 Plik zawiera kod serwera, niezbędne jest jego uruchomienie jako pierwszego ponieważ on tworzy kolejkę komunikatów. Przetwarza całą logikę przesyłania wiadomości. Została w nim zaimplementowana tablica mieszająca, zawierająca wszystkich użytkowników.
 
 * inf151918_k.c:
+
 Plik zawiera kod klienta, nie zawiera żadnych funkcji przetwarzających logikę przesyłania wiadomości, wszystko to dzieje się po stronie serwera.  
 
 
