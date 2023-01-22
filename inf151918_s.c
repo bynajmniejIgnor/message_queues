@@ -74,7 +74,11 @@ user *login(char *name, char *passwd){
 	if(hash_table[index]!=NULL){
 		if(strncmp(hash_table[index]->password,passwd,MAX_USERS)==0){
 			if(hash_table[index]->log_attempt>2){
-				printf("Detected suspicious activity, blocking account...\n");
+				printf("Detected suspicious activity, blocking account %s...\n",hash_table[index]->username);
+				return NULL;
+			}
+			if(hash_table[index]->loggedin==1){
+				printf("User %s already logged in\n",hash_table[index]->username);
 				return NULL;
 			}
 			hash_table[index]->loggedin=1;
@@ -117,6 +121,7 @@ user *hash_table_find(char *name){
 }
 
 void set_message(msgbuff *msg, long mtype, char *sender, char *receiver, char *body){
+	msg->code=0;
 	msg->mtype=mtype;
 	strcpy(msg->sender,sender);
 	strcpy(msg->receiver,receiver);
@@ -255,7 +260,7 @@ int main(int argc, char *argv[]){
 					set_message(&response,403,"server",name,"This account has beed locked out because of suspicious activity!\n");
 				}
 				else{
-					set_message(&response,403,"server",name,"Incorrect credentials!\n");
+					set_message(&response,403,"server",name,"Login error\n");
 				}
 				if(msgsnd(server,&response,MAX_MESSAGE_LENGTH,0)==-1) perror("msgsnd");
 				break;

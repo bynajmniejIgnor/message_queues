@@ -1,10 +1,10 @@
 ### INSTRUKCJA KOMPILACJI
-	W celu skompilowania plików należy uruchomić plik compile.sh
-	Wygeneruje on dwa pliki: server.out oraz client.out
+	W celu skompilowania plików należy uruchomić plik `compile.sh`
+	Wygeneruje on dwa pliki: `server.out` oraz `client.out`
 
 ### INSTRUKCJA URUCHOMIENIA
-	Należy najpierw jednokrotnie uruchomić plik server.out, a dopiero potem wybraną ilość programów client.out.
-	Aby użytkownik mógł się zalogować, w polu `Server id:` musi podać ciąg `1234` zatwierdzony enterem.
+	Należy najpierw jednokrotnie uruchomić plik `server.out`, a dopiero potem wybraną ilość programów `client.out`.
+	Aby użytkownik mógł się zalogować, w polu `Server id` musi podać ciąg `1234` zatwierdzony enterem.
 
 	Utworzonych jest 9 użytkowników:
 	login	hasło

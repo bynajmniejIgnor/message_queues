@@ -13,8 +13,11 @@
 \begin{document}
 	\title{IPC Chat Service — projekt zaliczeniowy}
 	\date{Politechnika Poznańska\\ styczeń 2023}
-	\author{Igor Szczepaniak \\ inf151918}
+	\author{Igor Szczepaniak\\ inf151918}
 	\maketitle
+	\section{Zasady funkcjonowania relacji klient-serwer}
+		Komunikacja odbywa się za pomocą jednej kolejki komunikatów tworzonej przez serwer. Każdemu użytkownikowi przydzielany jest numer identyfikacyjny (zależny od zmiennej \verb+MAX_USERS+, czyli maksymalnej liczby użytkowników na serwerze, oraz od wartości jaką zwraca funkcja mieszająca na podstawie nazwy użytkownika), który stanowi jedyny typ wiadomości, na który dany użytkownik będzie oczekiwać. Serwer nasłuchuje wiadomości o typach 1-8 i nadaje wiadomości przeznaczone dla konkretnych użytkowników.\\
+		Użytkownicy logują się do serwera za pomocą loginu oraz hasła. Po trzykrotnej, błędnej próbie logowania konto użytkownika zostaje zablokowane.
 	\section{Struktura wiadomości kolejki}
 	\begin{lstlisting}[language=C]
 		struct{
@@ -37,7 +40,6 @@
 	\newpage
 
 	\section{Opis typów wiadomości}
-		Serwer nasłuchuje wszystkich wiadomości o typach podanych poniżej. Użytkownicy nasłuchują wiadomości jedynie o unikalnym typie, przydzielanym indywidualnie przez serwer.
 	\begin{itemize}
 		\item 1 - żądanie logowania
 		\item 2 - żądanie listy zalogowanych użytkowników
@@ -47,7 +49,50 @@
 		\item 6 - żądanie wysłania wiadomości do grupy użytkowników
 		\item 7 - żądanie dołączenia do grupy
 		\item 8 - żądanie opuszczenia grupy
-		\item $\left[MAX\_USERS; \; 2\times MAX\_USERS\right]$ - typy wiadomości, na które oczekują kolejni użytkownicy
+		\item $\left[MAX\_USERS; \; 2\times MAX\_USERS\right]$ - typy wiadomości, na które oczekują użytkownicy
 	\end{itemize}
+
+	\section{Przykładowe żądania i odpowiedzi}
+		Użytkownik test1 wysyła żądanie wysłania wiadomości do użytkownika test2:
+		\begin{lstlisting}[language=C]
+			struct{
+				long mtype=4;
+				char sender[]="test1";
+				char receiver[]="test2";
+				char mtext[]="Hello there!";
+			}msgbuff;
+		\end{lstlisting}
+
+		Serwer po otrzymaniu żądania przesyła wiadomość użytkownikowi test2:
+		\begin{lstlisting}[language=C]
+			struct{
+				long mtype=32; //unikatowy mtype dla test2 
+				char sender[]="test1";
+				char receiver[]="test2";
+				char mtext[]="Hello there!";
+			}msgbuff;
+		\end{lstlisting}
+		\newpage
+		\noindent Użytkownik test1 wysyła żądania dołączenia do grupy \verb+group0+:
+		\begin{lstlisting}[language=C]
+			struct{
+				long mtype=7;
+				char sender[]="test1";
+				char receiver[]="server";
+				char mtext[]="0";
+			}msgbuff;
+		\end{lstlisting}
+		Grupa okazuje się pełna - serwer odpowiada:
+		\begin{lstlisting}[language=C]
+			struct{
+				long mtype=58; //unikatowy mtype dla test1
+				int code=403 //informacja o niepowodzeniu;
+				char sender[]="server";
+				char receiver[]="test1";
+			}msgbuff;
+		\end{lstlisting}
+
+
+
 
 \end{document}
